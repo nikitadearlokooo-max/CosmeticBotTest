@@ -1,0 +1,9 @@
+services:
+  - type: worker
+    name: cosmetic-bot-test
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python telegram_bot_cosmetic_NEW.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
