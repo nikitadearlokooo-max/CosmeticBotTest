@@ -20,3 +20,10 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local deployment helpers
+gh.zip
+gh_cli/
+github_upload/
+github_payload.json
+gh-auth.*.log
