@@ -1,4 +1,5 @@
 import html
+import http.server
 import json
 import os
 import random
@@ -9,6 +10,7 @@ import urllib.request
 
 
 MAX_MESSAGE_LENGTH = 3500
+WEBHOOK_PATH = "/webhook"
 
 
 QUESTIONS = [
@@ -1117,6 +1119,12 @@ class TelegramBot:
         else:
             self.send_message(chat_id, "Выберите команду на клавиатуре или напишите /start.", MAIN_KEYBOARD)
 
+    def handle_update(self, update):
+        if "message" in update:
+            self.handle_message(update["message"])
+        elif "callback_query" in update:
+            self.handle_callback(update["callback_query"])
+
     def handle_callback(self, callback):
         callback_id = callback["id"]
         message = callback.get("message", {})
@@ -1185,6 +1193,7 @@ class TelegramBot:
         )
 
     def run(self):
+        self.request("deleteWebhook", {"drop_pending_updates": "true"})
         bot_info = self.request("getMe")
         print(f"Bot @{bot_info['username']} started. Press Ctrl+C to stop.")
 
@@ -1200,12 +1209,65 @@ class TelegramBot:
 
             for update in updates:
                 self.offset = update["update_id"] + 1
-                if "message" in update:
-                    self.handle_message(update["message"])
-                elif "callback_query" in update:
-                    self.handle_callback(update["callback_query"])
+                self.handle_update(update)
 
             time.sleep(1)
+
+    def run_webhook(self, host, port, public_url):
+        webhook_url = public_url.rstrip("/") + WEBHOOK_PATH
+        self.request(
+            "setWebhook",
+            {
+                "url": webhook_url,
+                "allowed_updates": json.dumps(["message", "callback_query"]),
+                "drop_pending_updates": "true",
+            },
+        )
+        bot_info = self.request("getMe")
+        print(f"Bot @{bot_info['username']} webhook started on {host}:{port}")
+        print(f"Webhook URL: {webhook_url}")
+
+        bot = self
+
+        class WebhookHandler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path not in ("/", "/health"):
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+
+                body = b"CosmeticBotTest is running"
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_POST(self):
+                if self.path != WEBHOOK_PATH:
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+
+                length = int(self.headers.get("Content-Length", "0"))
+                payload = self.rfile.read(length).decode("utf-8")
+                try:
+                    update = json.loads(payload)
+                    bot.handle_update(update)
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b"ok")
+                except Exception as error:
+                    print(f"Webhook error: {error}")
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b"ok")
+
+            def log_message(self, format, *args):
+                return
+
+        server = http.server.ThreadingHTTPServer((host, port), WebhookHandler)
+        server.serve_forever()
 
 
 def main():
@@ -1215,7 +1277,17 @@ def main():
             "Bot token not found. Put it into .env.txt as BOT_TOKEN=123456:ABC..."
         )
 
-    TelegramBot(token).run()
+    bot = TelegramBot(token)
+    port = os.getenv("PORT")
+    public_domain = os.getenv("KOYEB_PUBLIC_DOMAIN")
+    webhook_url = os.getenv("WEBHOOK_URL")
+
+    if port and (public_domain or webhook_url):
+        public_url = webhook_url or f"https://{public_domain}"
+        bot.run_webhook("0.0.0.0", int(port), public_url)
+        return
+
+    bot.run()
 
 
 if __name__ == "__main__":
