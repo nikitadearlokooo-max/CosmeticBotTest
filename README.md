@@ -30,9 +30,9 @@ Or run manually:
 python telegram_bot_cosmetic_NEW.py
 ```
 
-## Deploy To Render
+## Deploy To Koyeb
 
-Use a Render Background Worker, not a Web Service, because this bot uses Telegram polling and does not open an HTTP port.
+Use a Koyeb Worker, not a Web Service, because this bot uses Telegram polling and does not open an HTTP port.
 
 Settings:
 
