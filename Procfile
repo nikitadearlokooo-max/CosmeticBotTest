@@ -1,1 +1,1 @@
-worker: python telegram_bot_cosmetic_NEW.py
+web: python telegram_bot_cosmetic_NEW.py
