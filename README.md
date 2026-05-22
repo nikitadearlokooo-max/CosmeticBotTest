@@ -45,3 +45,27 @@ Settings:
 - Service type: Web Service
 
 Do not upload `.env.txt` to GitHub. It is ignored by `.gitignore`.
+
+## Deploy To Cloudflare Workers
+
+This is the recommended free always-available deployment.
+
+Cloudflare Worker file:
+
+```text
+cloudflare_worker.js
+```
+
+After deploying the Worker, add a Worker secret:
+
+```text
+BOT_TOKEN=your_token_from_BotFather
+```
+
+Then open this URL once to register the Telegram webhook:
+
+```text
+https://your-worker-name.your-subdomain.workers.dev/setWebhook
+```
+
+The bot will then work through Telegram webhooks without a constantly running server.
